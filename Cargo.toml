@@ -1,0 +1,18 @@
+[package]
+name = "LeafShell"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.102"
+chrono = "0.4.44"
+iced = { version = "0.14.0", features = ["tokio"] }
+iced-box = { git = "https://github.com/iced-box/iced-box.git", branch = "main", features = ["lucide_icons"]}
+iced_layershell = "0.18.1"
+mpris = "2.1.0"
+polling = "3.11.0"
+serde = "1.0.228"
+serde_json = "1.0.149"
+tokio = { version = "1.52.3", features = ["full"] }
+zbus = { version = "5.15.0", features = ["tokio"] }
+zvariant = "5.11.0"
