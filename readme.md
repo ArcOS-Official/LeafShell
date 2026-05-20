@@ -11,7 +11,7 @@ the Arc Desktop Environment will look as follows:
 ```
 
 # Why Rust/Iced
-I looked into other languages but found a few uninteresting to me:
+I looked into other languages but found most options uninteresting to me:
 - C: too raw, can't get stuff done quickly enough
 - C++: RAII is a timed neuclear bomb
 - Zig: Still too new, I did try to contribute to `dvui` and talk to david (the creator)
