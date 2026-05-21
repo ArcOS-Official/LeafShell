@@ -8,6 +8,7 @@ use std::{env, fs};
 use anyhow::Result;
 use iced::font::Weight;
 use iced::theme::{Custom, Palette, palette};
+use iced::widget::text::Wrapping;
 use iced::widget::{Row, button, center, column, container, mouse_area, row, text};
 use iced::{
     Alignment, Color, Element, Font, Length, Padding, Subscription,
@@ -391,13 +392,13 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
             _ => unreachable!(),
         };
         let mut title = s.player.title.clone();
-        if title.len() > 18 {
-            title = format!("{}...", title.get(0..=18).unwrap());
+        if title.len() > 14 {
+            title = format!("{}...", title.get(0..=14).unwrap());
         }
         media_player = row![
             center(icon(Lucide::Music)).width(28).height(34),
             column![
-                text(title).font(bold(Weight::Black)).size(13).width(140),
+                text(title).font(bold(Weight::Black)).size(13).width(140).wrapping(Wrapping::None),
                 text(format!("{:02}:{:02} / {:02}:{:02}", dm, d.num_seconds()-(dm*60), fm, f.num_seconds()-(fm*60))).size(10),
             ]
             .spacing(2),
