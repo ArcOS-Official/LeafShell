@@ -363,7 +363,7 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
             ..Default::default()
         });
         let label = text(format!("{i}"))
-            .font(bold(if i <= s.hyprland.workspaces.len() {
+            .font(bold(if i <= s.hyprland.workspaces.len() || i < s.hyprland.current_workspace as usize {
                 Weight::ExtraBold
             } else {
                 Weight::Bold
@@ -371,7 +371,7 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
             .size(14);
         if i as u8 == s.hyprland.current_workspace {
             btn = topbar_button_active(label);
-        } else if i <= s.hyprland.workspaces.len() {
+        } else if i <= s.hyprland.workspaces.len() || i < s.hyprland.current_workspace as usize {
             btn = topbar_button(label);
         }
         btn = btn.on_press(Message::Workspace(i as u8));
