@@ -2,14 +2,16 @@ use crate::audio::AudioState;
 use crate::hyprland::{switch_workspace};
 use crate::media::{MediaState, MediaStatus};
 use crate::network::{ConnectionKind, NetworkState};
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::SystemTime;
 use std::{env, fs};
 
 use anyhow::Result;
 use iced::font::Weight;
 use iced::theme::{Custom, Palette, palette};
 use iced::widget::text::Wrapping;
-use iced::widget::{Row, button, center, column, container, mouse_area, row, text};
+use iced::widget::{Row, Space, button, center, column, container, mouse_area, row, text};
 use iced::{
     Alignment, Color, Element, Font, Length, Padding, Subscription,
     Task as Command, Theme, event, mouse::ScrollDelta, theme, time,
@@ -56,6 +58,26 @@ pub fn main() -> Result<(), iced_layershell::Error> {
         .font(icon_fonts)
         .theme(get_matugen_theme(matugen_conf))
         .run()
+}
+
+
+struct Animation {
+    start: SystemTime,
+    length: time::Duration,
+    complete: f32,
+}
+
+impl Animation {
+    pub fn new(length: time::Duration) -> Self {
+        Self {
+            start: SystemTime::now(),
+            length,
+            complete: 0.0
+        }
+    }
+    pub fn tick(&mut self) {
+        self.complete = (SystemTime::now().duration_since(self.start).unwrap().as_millis() / self.length.as_millis()) as f32;
+    }
 }
 
 pub struct Config {
@@ -379,55 +401,6 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
         workspaces = workspaces.push(btn);
     }
 
-    let mut media_player = Row::new();
-    let media_running = s.player.status != MediaStatus::Stopped;
-    if media_running {
-        let d = chrono::Duration::from_std(s.player.position.unwrap_or(time::Duration::from_secs(0))).unwrap();
-        let dm = d.num_minutes();
-        let f = chrono::Duration::from_std(s.player.length.unwrap_or(time::Duration::from_secs(1))).unwrap();
-        let fm = f.num_minutes();
-        let pause_icon = match s.player.status {
-            MediaStatus::Playing => Lucide::Pause,
-            MediaStatus::Paused => Lucide::Play,
-            _ => unreachable!(),
-        };
-        let mut title = s.player.title.clone();
-        if title.len() > 14 {
-            title = format!("{}...", title.get(0..=14).unwrap());
-        }
-        media_player = row![
-            center(icon(Lucide::Music)).width(28).height(34),
-            column![
-                text(title).font(bold(Weight::Black)).size(13).width(140).wrapping(Wrapping::None),
-                text(format!("{:02}:{:02} / {:02}:{:02}", dm, d.num_seconds()-(dm*60), fm, f.num_seconds()-(fm*60))).size(10),
-            ]
-            .spacing(2),
-            topbar_button(icon(Lucide::SkipBack)).on_press(Message::SkipBack),
-            topbar_button(icon(pause_icon)).on_press(Message::Pause),
-            topbar_button(icon(Lucide::SkipForward)).on_press(Message::SkipForward),
-        ]
-        .spacing(8)
-        .align_y(Alignment::Center);
-    }
-
-    let t = chrono::Local::now();
-    let ctext = if s.config.time_24h {
-        t.format("%H:%M:%S").to_string()
-    } else {
-        t.format("%I:%M:%S %p").to_string()
-    };
-    let clock = column![
-        text(ctext).size(16).font(Font {
-            weight: Weight::ExtraBold,
-            ..Font::with_name("JetBrains Mono")
-        }),
-        text(t.format("%A, %B %d").to_string()).size(11),
-    ]
-    .spacing(2)
-    .width(Length::Shrink)
-    .align_x(Alignment::Center)
-    .padding(Padding::new(0.0).horizontal(12));
-
     let volume_icon = match s.audio.volume_icon() {
         "muted" => Lucide::VolumeX,
         "low" => Lucide::Volume,
@@ -485,18 +458,13 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
     .spacing(6)
     .align_y(Alignment::Center);
 
-    let mut section1 = row![pill(workspaces)].spacing(6);
-    if media_running {
-        section1 = section1.push(pill(media_player));
-    }
-
     row![
-        container(section1)
+        container(pill(workspaces))
             .width(Length::Fill)
             .align_x(Alignment::Start)
             .height(Length::Fill)
             .center_y(Length::Fill),
-        container(pill(clock))
+        container(tophub(s))
             .width(Length::Shrink)
             .center_y(Length::Fill),
         container(row![pill(sys)].spacing(6))
@@ -511,6 +479,73 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
     .align_y(Alignment::Center)
     .padding(0)
     .into()
+}
+
+pub fn tophub<'a>(s: &'a State) -> Element<'a, Message> {
+    let mut media_player = Row::new();
+    let media_running = s.player.status != MediaStatus::Stopped;
+    if media_running {
+        let d = chrono::Duration::from_std(s.player.position.unwrap_or(time::Duration::from_secs(0))).unwrap();
+        let dm = d.num_minutes();
+        let f = chrono::Duration::from_std(s.player.length.unwrap_or(time::Duration::from_secs(1))).unwrap();
+        let fm = f.num_minutes();
+        let pause_icon = match s.player.status {
+            MediaStatus::Playing => Lucide::Pause,
+            MediaStatus::Paused => Lucide::Play,
+            _ => unreachable!(),
+        };
+        let mut title = s.player.title.clone();
+        if title.len() > 14 {
+            title = format!("{}...", title.get(0..=14).unwrap());
+        }
+        media_player = row![
+            center(icon(Lucide::Music)).width(28).height(34),
+            column![
+                text(title).font(bold(Weight::Black)).size(13).width(140).wrapping(Wrapping::None),
+                text(format!("{:02}:{:02} / {:02}:{:02}", dm, d.num_seconds()-(dm*60), fm, f.num_seconds()-(fm*60))).size(10),
+            ]
+            .spacing(2),
+            topbar_button(icon(Lucide::SkipBack)).on_press(Message::SkipBack),
+            topbar_button(icon(pause_icon)).on_press(Message::Pause),
+            topbar_button(icon(Lucide::SkipForward)).on_press(Message::SkipForward),
+        ]
+        .spacing(8)
+        .align_y(Alignment::Center);
+    }
+
+    let compound = media_running;
+    let t = chrono::Local::now();
+    let ctext = if s.config.time_24h {
+        t.format("%H:%M:%S").to_string()
+    } else {
+        t.format("%I:%M:%S %p").to_string()
+    };
+    let ctext_el = text(ctext).size(18).font(Font {
+        weight: Weight::ExtraBold,
+        ..Font::with_name("JetBrains Mono")
+    }).style(|t: &Theme| text::Style { color: Some(t.palette().primary) });
+    let dtext_el = text(t.format("%A, %B %d").to_string()).size(12);
+
+    let clock = column![
+        ctext_el,
+        dtext_el
+    ]
+    .spacing(1)
+    .width(Length::Shrink)
+    .align_x(Alignment::Start)
+    .padding(Padding::new(0.0).horizontal(12));
+
+    let mut hub = row![clock]
+        .width(Length::Shrink)
+        .spacing(6)
+        .height(Length::Fill)
+        .align_y(Alignment::Center);
+
+    if media_running {
+        hub = hub.push(media_player);
+    }
+
+    pill(hub)
 }
 
 fn style(_state: &State, theme: &iced::Theme) -> iced::theme::Style {
