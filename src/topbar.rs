@@ -2,25 +2,22 @@ use crate::audio::AudioState;
 use crate::hyprland::{switch_workspace};
 use crate::media::{MediaState, MediaStatus};
 use crate::network::{ConnectionKind, NetworkState};
-use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::SystemTime;
-use std::{env, fs};
-
+use widgets::*;
 use anyhow::Result;
 use iced::font::Weight;
-use iced::theme::{Custom, Palette, palette};
 use iced::widget::text::Wrapping;
-use iced::widget::{Row, Space, button, center, column, container, mouse_area, row, text};
+use iced::widget::{Row, Space, button as ibutton, center, column, container, mouse_area, row, text};
 use iced::{
     Alignment, Color, Element, Font, Length, Padding, Subscription,
-    Task as Command, Theme, event, mouse::ScrollDelta, theme, time,
+    Task as Command, Theme, event, mouse::ScrollDelta, time,
 };
 use iced_box::icon::lucide::*;
 use iced_layershell::application;
 use iced_layershell::reexport::Anchor;
 use iced_layershell::settings::{LayerShellSettings, Settings, StartMode};
 use iced_layershell::to_layer_message;
+use std::env;
 
 use crate::hyprland::HyprlandState;
 
@@ -88,46 +85,6 @@ impl Default for Config {
     fn default() -> Self {
         Self { time_24h: true }
     }
-}
-
-#[derive(serde::Deserialize, Debug)]
-struct JsonPalette {
-    background: String,
-    primary: String,
-    text: String,
-    success: String,
-    warning: String,
-    danger: String,
-}
-
-fn hex_to_color(hex: &str) -> Color {
-    let hex = hex.trim_start_matches('#');
-    let r = u8::from_str_radix(&hex[0..2], 16).unwrap() as f32 / 255.0;
-    let g = u8::from_str_radix(&hex[2..4], 16).unwrap() as f32 / 255.0;
-    let b = u8::from_str_radix(&hex[4..6], 16).unwrap() as f32 / 255.0;
-    Color::from_rgb(r, g, b)
-}
-
-impl From<JsonPalette> for Palette {
-    fn from(p: JsonPalette) -> Self {
-        Palette {
-            background: hex_to_color(&p.background),
-            primary: hex_to_color(&p.primary),
-            text: hex_to_color(&p.text),
-            success: hex_to_color(&p.success),
-            warning: hex_to_color(&p.warning),
-            danger: hex_to_color(&p.danger),
-        }
-    }
-}
-
-fn get_matugen_theme(conf_path: String) -> Theme {
-    let file = fs::read_to_string(conf_path).unwrap();
-    let palette: JsonPalette = serde_json::from_str(&file).unwrap();
-    Theme::Custom(Arc::new(Custom::new(
-        "background".to_string(),
-        palette.into(),
-    )))
 }
 
 struct State {
@@ -269,92 +226,6 @@ fn bold(w: Weight) -> Font {
         ..Font::with_name("JetBrains Mono")
     }
 }
-fn icon(l: Lucide) -> iced::widget::Text<'static> {
-    text(l.to_string()).font(lucide_font()).size(20)
-}
-
-/// Pill container — rounded, semi-transparent background, vertically centred
-fn pill<'a>(wd: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
-    container(wd)
-        .style(|t: &theme::Theme| container::Style {
-            background: Some(iced::Background::Color(
-                t.palette().background.scale_alpha(0.75),
-            )),
-            border: iced::Border {
-                color: t.palette().text.scale_alpha(0.08),
-                width: 1.0,
-                radius: 14.into(),
-            },
-            ..container::Style::default()
-        })
-        .padding(Padding::new(0.0).horizontal(10))
-        .height(Length::Fill)
-        .center_y(Length::Fill)
-        .into()
-}
-
-/// 34×34 square icon button, subtle fill
-fn topbar_button<'a>(e: impl Into<Element<'a, Message>>) -> button::Button<'a, Message> {
-    button(center(e).width(Length::Fill).height(Length::Fill))
-        .style(|t: &Theme, s| button::Style {
-            background: Some(iced::Background::Color(match s {
-                button::Status::Hovered | button::Status::Pressed => {
-                    palette::lighten(t.palette().background, 0.35)
-                }
-                _ => palette::lighten(t.palette().background, 0.15),
-            })),
-            border: iced::Border {
-                radius: 10.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
-            },
-            text_color: t.palette().text,
-            ..button::Style::default()
-        })
-        .width(34)
-        .height(34)
-        .padding(0)
-}
-
-fn topbar_button_active<'a>(e: impl Into<Element<'a, Message>>) -> button::Button<'a, Message> {
-    button(center(e).width(Length::Fill).height(Length::Fill))
-        .style(|t: &Theme, _| button::Style {
-            background: Some(iced::Background::Color(t.palette().primary)),
-            border: iced::Border {
-                radius: 10.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
-            },
-            text_color: t.palette().background,
-            ..button::Style::default()
-        })
-        .width(34)
-        .height(34)
-        .padding(0)
-}
-
-/// Wide pill-shaped button (e.g. wifi, volume) with icon + label
-fn topbar_button_wide<'a>(e: impl Into<Element<'a, Message>>) -> button::Button<'a, Message> {
-    button(center(e).width(Length::Fill).height(Length::Fill))
-        .style(|t: &Theme, s| button::Style {
-            background: Some(iced::Background::Color(match s {
-                button::Status::Hovered | button::Status::Pressed => {
-                    palette::lighten(t.palette().background, 0.35)
-                }
-                _ => palette::lighten(t.palette().background, 0.15),
-            })),
-            border: iced::Border {
-                radius: 10.into(),
-                width: 0.0,
-                color: Color::TRANSPARENT,
-            },
-            text_color: t.palette().text,
-            ..button::Style::default()
-        })
-        .height(34)
-        .width(Length::Shrink)
-        .padding(Padding::new(0.0).horizontal(14))
-}
 
 fn view<'a>(s: &'a State) -> Element<'a, Message> {
     let mut workspaces = Row::new().spacing(6);
@@ -364,7 +235,7 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
         10usize
     };
     for i in 1..=end {
-        let mut btn = topbar_button(
+        let mut btn = icon_button(
             text(format!("{i}"))
                 .font(bold(if i <= s.hyprland.workspaces.len() {
                     Weight::ExtraBold
@@ -373,10 +244,10 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
                 }))
                 .size(14),
         )
-        .style(|t: &Theme, s| button::Style {
+        .style(|t: &Theme, s| ibutton::Style {
             background: None,
             text_color: match s {
-                button::Status::Hovered => t.palette().primary,
+                ibutton::Status::Hovered => t.palette().primary,
                 _ => t.palette().text,
             },
             border: iced::Border {
@@ -395,7 +266,7 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
         if i as u8 == s.hyprland.current_workspace {
             btn = topbar_button_active(label);
         } else if i <= s.hyprland.workspaces.len() || i < s.hyprland.current_workspace as usize {
-            btn = topbar_button(label);
+            btn = icon_button(label);
         }
         btn = btn.on_press(Message::Workspace(i as u8));
         workspaces = workspaces.push(btn);
@@ -424,18 +295,18 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
     };
 
     let sys = row![
-        topbar_button_wide(
+        button(
             row![icon(Lucide::Keyboard), text(s.hyprland.keyboard_layout.clone()).font(bold(Weight::Black))]
                 .spacing(6)
                 .align_y(Alignment::Center)
         ).on_press(Message::NextLanguage),
-        topbar_button_wide(
+        button(
             row![icon(wifi_icon), text(wifi_text)]
                 .spacing(6)
                 .align_y(Alignment::Center)
         ),
         mouse_area(
-            topbar_button_wide(
+            button(
                 row![icon(volume_icon), text(s.audio.volume.to_string())]
                     .spacing(6)
                     .align_y(Alignment::Center)
@@ -453,7 +324,7 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
                 }
             }
         }),
-        topbar_button(icon(Lucide::Power)),
+        icon_button(icon(Lucide::Power)),
     ]
     .spacing(6)
     .align_y(Alignment::Center);
@@ -505,15 +376,17 @@ pub fn tophub<'a>(s: &'a State) -> Element<'a, Message> {
                 text(format!("{:02}:{:02} / {:02}:{:02}", dm, d.num_seconds()-(dm*60), fm, f.num_seconds()-(fm*60))).size(10),
             ]
             .spacing(2),
-            topbar_button(icon(Lucide::SkipBack)).on_press(Message::SkipBack),
-            topbar_button(icon(pause_icon)).on_press(Message::Pause),
-            topbar_button(icon(Lucide::SkipForward)).on_press(Message::SkipForward),
+            icon_button(icon(Lucide::SkipBack)).on_press(Message::SkipBack),
+            icon_button(icon(pause_icon)).on_press(Message::Pause),
+            icon_button(icon(Lucide::SkipForward)).on_press(Message::SkipForward),
         ]
         .spacing(8)
         .align_y(Alignment::Center);
     }
 
     let compound = media_running;
+    _ = compound;
+
     let t = chrono::Local::now();
     let ctext = if s.config.time_24h {
         t.format("%H:%M:%S").to_string()

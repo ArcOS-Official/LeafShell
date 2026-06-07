@@ -2,6 +2,7 @@
 //! Mainly used for displaying the current state and changing some audio stuff
 
 use std::process::Command;
+use widgets::reexports::{serde, serde_json};
 
 use anyhow::Result;
 use serde::Deserialize;

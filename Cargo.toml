@@ -12,7 +12,8 @@ iced_layershell = "0.18.1"
 mpris = "2.1.0"
 polling = "3.11.0"
 serde = "1.0.228"
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 tokio = { version = "1.52.3", features = ["full"] }
 zbus = { version = "5.15.0", features = ["tokio"] }
 zvariant = "5.11.0"
+widgets = { git = "https://github.com/KernelState/widgets.git", branch = "main" }
