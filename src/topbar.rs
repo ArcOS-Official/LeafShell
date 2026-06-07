@@ -352,7 +352,7 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
     .into()
 }
 
-pub fn tophub<'a>(s: &'a State) -> Element<'a, Message> {
+fn tophub<'a>(s: &'a State) -> Element<'a, Message> {
     let mut media_player = Row::new();
     let media_running = s.player.status != MediaStatus::Stopped;
     if media_running {
@@ -393,11 +393,11 @@ pub fn tophub<'a>(s: &'a State) -> Element<'a, Message> {
     } else {
         t.format("%I:%M:%S %p").to_string()
     };
-    let ctext_el = text(ctext).size(18).font(Font {
+    let ctext_el = text(ctext).size(16).font(Font {
         weight: Weight::ExtraBold,
         ..Font::with_name("JetBrains Mono")
     }).style(|t: &Theme| text::Style { color: Some(t.palette().primary) });
-    let dtext_el = text(t.format("%A, %B %d").to_string()).size(12);
+    let dtext_el = text(t.format("%A, %B %d").to_string()).size(10);
 
     let clock = column![
         ctext_el,
