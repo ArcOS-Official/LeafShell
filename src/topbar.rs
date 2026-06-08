@@ -115,6 +115,11 @@ impl UiState {
                     ))
                     .go(1.0, Instant::now()),
             );
+            if md == 0.0 {
+                self.vars.insert("shrink_mp".to_string(), 1.0);
+            } else {
+                self.vars.insert("shrink_mp".to_string(), 0.0);
+            }
         }
         self.vars.insert("media_running".to_string(), md as f32);
         if md == 1.0 {
@@ -127,7 +132,7 @@ impl UiState {
             String::from("workspace"),
             Animation::new(0.0)
                 .duration(Duration::from_millis(
-                    (500 as f64 * self.config.animation_speed).round() as u64,
+                    (200 as f64 * self.config.animation_speed).round() as u64,
                 ))
                 .easing(Easing::EaseOutExpo)
                 .go(1.0, Instant::now()),
@@ -541,21 +546,24 @@ fn tophub<'a>(s: &'a State) -> Element<'a, Message> {
         elements.push(TophubComponent::MediaPlayer);
     }
     let mut width = 0;
-    let mut hub = Row::from_vec(elements.iter().map(|i| {
+    let mut hub = Row::from_vec(elements.iter().filter_map(|i| {
         match i {
             TophubComponent::Clock => {
                 width += Clock::size().0;
-                center(Clock::display(s))
+                Some(center(Clock::display(s))
                     .width(Clock::size().0)
                     .clip(true)
-                    .into()
+                    .into())
             },
             TophubComponent::MediaPlayer => {
+                if s.player.status == MediaStatus::Stopped {
+                    return None;
+                }
                 width += MediaPlayer::size().0;
-                center(MediaPlayer::display(&s.player))
+                Some(center(MediaPlayer::display(&s.player))
                     .width(MediaPlayer::size().0)
                     .clip(true)
-                    .into()
+                    .into())
             },
         }
     }).collect())
@@ -566,7 +574,11 @@ fn tophub<'a>(s: &'a State) -> Element<'a, Message> {
         let val = v.interpolate_with(|v| v, Instant::now());
         val
     } else {1.0};
-    let w = (width as f32 * t).round() as u32;
+    let w = if s.ui_state.vars.get("shrink_mp").is_some_and(|i| *i == 1.0) {
+        width + ((1.0-t)*MediaPlayer::size().0 as f32).round() as u32
+    } else {
+        (width as f32 * t).round() as u32
+    };
 
     hub = hub
         .width(w)
