@@ -464,7 +464,7 @@ impl TophubComponentInterface for MediaPlayer {
         };
         let mut title = inp.title.clone();
         if title.len() > 14 {
-            title = format!("{}...", title.get(0..=14).unwrap());
+            title = format!("{}...", title.get(0..=14).unwrap_or("Media"));
         }
         let media_player = row![
             center(icon(Lucide::Music)).width(28).height(34),
