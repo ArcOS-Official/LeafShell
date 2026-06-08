@@ -1,4 +1,4 @@
-use mpris::{PlayerFinder, PlaybackStatus};
+use mpris::{PlaybackStatus, PlayerFinder};
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
@@ -42,19 +42,21 @@ impl MediaState {
             return Self::default();
         };
 
-        let status = match player.get_playback_status().unwrap_or(PlaybackStatus::Stopped) {
+        let status = match player
+            .get_playback_status()
+            .unwrap_or(PlaybackStatus::Stopped)
+        {
             PlaybackStatus::Playing => MediaStatus::Playing,
-            PlaybackStatus::Paused  => MediaStatus::Paused,
-            _                       => MediaStatus::Stopped,
+            PlaybackStatus::Paused => MediaStatus::Paused,
+            _ => MediaStatus::Stopped,
         };
 
         let (title, artist, length) = player
             .get_metadata()
             .map(|m| {
-                let title = m.title()
-                    .unwrap_or("Unknown")
-                    .to_string();
-                let artist = m.artists()
+                let title = m.title().unwrap_or("Unknown").to_string();
+                let artist = m
+                    .artists()
                     .and_then(|a| a.first().cloned())
                     .unwrap_or_default()
                     .to_string();
@@ -76,20 +78,32 @@ impl MediaState {
     }
 
     pub fn play_pause() {
-        let Ok(finder) = PlayerFinder::new() else { return };
-        let Ok(player) = finder.find_active() else { return };
+        let Ok(finder) = PlayerFinder::new() else {
+            return;
+        };
+        let Ok(player) = finder.find_active() else {
+            return;
+        };
         let _ = player.play_pause();
     }
 
     pub fn next() {
-        let Ok(finder) = PlayerFinder::new() else { return };
-        let Ok(player) = finder.find_active() else { return };
+        let Ok(finder) = PlayerFinder::new() else {
+            return;
+        };
+        let Ok(player) = finder.find_active() else {
+            return;
+        };
         let _ = player.next();
     }
 
     pub fn previous() {
-        let Ok(finder) = PlayerFinder::new() else { return };
-        let Ok(player) = finder.find_active() else { return };
+        let Ok(finder) = PlayerFinder::new() else {
+            return;
+        };
+        let Ok(player) = finder.find_active() else {
+            return;
+        };
         let _ = player.previous();
     }
 }

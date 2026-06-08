@@ -42,7 +42,10 @@ impl HyprlandState {
         let cw: Workspace = serde_json::from_str(&cmd2)?;
 
         let cmd3 = String::from_utf8(
-            Command::new("hyprctl").args(["devices", "-j"]).output()?.stdout
+            Command::new("hyprctl")
+                .args(["devices", "-j"])
+                .output()?
+                .stdout,
         )?;
 
         let devices: serde_json::Value = serde_json::from_str(&cmd3)?;
@@ -50,9 +53,8 @@ impl HyprlandState {
             .as_array()
             .and_then(|kbs| {
                 // skip virtual keyboards, take the first real one
-                kbs.iter().find(|kb| {
-                    kb["main"].to_string().parse::<bool>().unwrap()
-                })
+                kbs.iter()
+                    .find(|kb| kb["main"].to_string().parse::<bool>().unwrap())
             })
             .and_then(|kb| kb["active_keymap"].as_str())
             .unwrap_or("Unknown")
