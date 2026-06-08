@@ -2,7 +2,11 @@ use crate::audio::AudioState;
 use crate::hyprland::{switch_workspace};
 use crate::media::{MediaState, MediaStatus};
 use crate::network::{ConnectionKind, NetworkState};
-use std::time::SystemTime;
+use std::collections::HashMap;
+use std::rc::Rc;
+use std::time::{Duration, Instant};
+use iced::Animation;
+use iced::animation::Easing;
 use widgets::*;
 use anyhow::Result;
 use iced::font::Weight;
@@ -58,51 +62,66 @@ pub fn main() -> Result<(), iced_layershell::Error> {
 }
 
 
-struct Animation {
-    start: SystemTime,
-    length: time::Duration,
-    complete: f32,
-}
-
-impl Animation {
-    pub fn new(length: time::Duration) -> Self {
-        Self {
-            start: SystemTime::now(),
-            length,
-            complete: 0.0
-        }
-    }
-    pub fn tick(&mut self) {
-        self.complete = (SystemTime::now().duration_since(self.start).unwrap().as_millis() / self.length.as_millis()) as f32;
-    }
-}
-
 pub struct Config {
     time_24h: bool,
+    animation_speed: f64,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self { time_24h: true }
+        Self { time_24h: true, animation_speed: 1.0 }
+    }
+}
+
+struct UiState {
+    config: Config,
+    animations: HashMap<String, Animation<f32>>,
+    vars: HashMap<String, f32>,
+}
+
+impl Default for UiState {
+    fn default() -> Self {
+        Self {
+            config: Config::default(),
+            animations: HashMap::new(),
+            vars: HashMap::new(),
+        }
+    }
+}
+
+impl UiState {
+    pub fn tick(&self) { }
+    pub fn switch_workspace(&mut self, l: u8) {
+        self.vars.insert(
+            String::from("lastwk"),
+            l as f32,
+        );
+        self.animations.insert(
+            String::from("workspace"),
+            Animation::new(0.0)
+                .duration(Duration::from_millis((200 as f64 *self.config.animation_speed).round() as u64))
+                .easing(Easing::EaseOutExpo)
+                .go(1.0, Instant::now()),
+        );
     }
 }
 
 struct State {
-    pub config: Config,
     hyprland: HyprlandState,
     audio: AudioState,
     network: NetworkState,
     player: MediaState,
+    ui_state: UiState,
 }
 
 impl Default for State {
     fn default() -> Self {
         Self {
             hyprland: HyprlandState::load().unwrap(),
-            config: Config::default(),
             audio: AudioState::load().unwrap(),
             network: NetworkState::load().unwrap(),
             player: MediaState::load(),
+            ui_state: UiState::default(),
         }
     }
 }
@@ -117,7 +136,6 @@ pub enum Message {
     ToggleMute,
     NetworkUpdated(NetworkState),
     AudioUpdated(AudioState),
-    Display,
     Tick,
     HyprlandUpdated(HyprlandState),
     SkipForward,
@@ -131,34 +149,37 @@ fn namespace() -> String {
 }
 
 fn subscription(_: &State) -> Subscription<Message> {
-    Subscription::batch([
-        time::every(time::Duration::from_millis(25)).map(|_| Message::Tick),
-        event::listen().map(|_| Message::Display),
-    ])
+        time::every(time::Duration::from_millis(25)).map(|_| Message::Tick)
 }
 
 fn update(state: &mut State, message: Message) -> Command<Message> {
     match message {
-        Message::Tick => Command::batch([
-            Command::perform(tokio::task::spawn_blocking(HyprlandState::load), |result| {
-                Message::HyprlandUpdated(result.unwrap().unwrap())
-            }),
-            Command::perform(tokio::task::spawn_blocking(NetworkState::load), |r| {
-                Message::NetworkUpdated(r.unwrap().unwrap())
-            }),
-            Command::perform(tokio::task::spawn_blocking(AudioState::load), |r| {
-                Message::AudioUpdated(r.unwrap().unwrap())
-            }),
-            Command::perform(tokio::task::spawn_blocking(MediaState::load), |r| {
-                Message::MediaUpdated(r.unwrap())
-            })
-        ]),
-        Message::Display => Command::none(),
+        Message::Tick => {
+            state.ui_state.tick();
+            Command::batch([
+                Command::perform(tokio::task::spawn_blocking(HyprlandState::load), |result| {
+                    Message::HyprlandUpdated(result.unwrap().unwrap())
+                }),
+                Command::perform(tokio::task::spawn_blocking(NetworkState::load), |r| {
+                    Message::NetworkUpdated(r.unwrap().unwrap())
+                }),
+                Command::perform(tokio::task::spawn_blocking(AudioState::load), |r| {
+                    Message::AudioUpdated(r.unwrap().unwrap())
+                }),
+                Command::perform(tokio::task::spawn_blocking(MediaState::load), |r| {
+                    Message::MediaUpdated(r.unwrap())
+                })
+            ])
+        },
         Message::Workspace(i) => {
+            state.ui_state.switch_workspace(state.hyprland.current_workspace);
             switch_workspace(i);
             Command::none()
         },
         Message::HyprlandUpdated(hs) => {
+            if hs.current_workspace != state.hyprland.current_workspace {
+                state.ui_state.switch_workspace(state.hyprland.current_workspace);
+            }
             state.hyprland = hs;
             Command::none()
         },
@@ -263,10 +284,17 @@ fn view<'a>(s: &'a State) -> Element<'a, Message> {
                 Weight::Bold
             }))
             .size(14);
+        let v = if let Some(v) = s.ui_state.animations.get("workspace") {
+            v.interpolate_with(|v| v, Instant::now())
+        } else {1.0f32};
         if i as u8 == s.hyprland.current_workspace {
-            btn = topbar_button_active(label);
+            btn = icon_button_active(label, v.into());
         } else if i <= s.hyprland.workspaces.len() || i < s.hyprland.current_workspace as usize {
-            btn = icon_button(label);
+            if s.ui_state.vars.get("lastwk").is_some_and(|lw| *lw == i as f32) {
+                    btn = icon_button_active(label, (1.0 - v).into());
+            } else {
+                btn = icon_button(label);
+            }
         }
         btn = btn.on_press(Message::Workspace(i as u8));
         workspaces = workspaces.push(btn);
@@ -388,7 +416,7 @@ fn tophub<'a>(s: &'a State) -> Element<'a, Message> {
     _ = compound;
 
     let t = chrono::Local::now();
-    let ctext = if s.config.time_24h {
+    let ctext = if s.ui_state.config.time_24h {
         t.format("%H:%M:%S").to_string()
     } else {
         t.format("%I:%M:%S %p").to_string()

@@ -3899,7 +3899,7 @@ dependencies = [
 [[package]]
 name = "widgets"
 version = "0.1.0"
-source = "git+https://github.com/KernelState/widgets.git?branch=main#338a5559d86b340510823079549e23a665098828"
+source = "git+https://github.com/KernelState/widgets.git?branch=main#245073d16e13bf656b140f847791c460e213e5d3"
 dependencies = [
  "iced",
  "iced-box",
