@@ -455,8 +455,7 @@ impl TophubComponentInterface for MediaPlayer {
         let fm = f.num_minutes();
         let pause_icon = match inp.status {
             MediaStatus::Playing => Lucide::Pause,
-            MediaStatus::Paused => Lucide::Play,
-            _ => unreachable!(),
+            _ => Lucide::Play,
         };
         let mut title = inp.title.clone();
         if title.len() > 14 {
