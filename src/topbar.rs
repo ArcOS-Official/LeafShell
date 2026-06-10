@@ -13,8 +13,8 @@ use iced::{
     mouse::ScrollDelta, time,
 };
 use iced_box::icon::lucide::*;
-use iced_layershell::application;
-use iced_layershell::reexport::Anchor;
+use iced_layershell::daemon;
+use iced_layershell::reexport::{Anchor, IcedId};
 use iced_layershell::settings::{LayerShellSettings, Settings, StartMode};
 use iced_layershell::to_layer_message;
 use std::collections::HashMap;
@@ -36,7 +36,7 @@ pub fn main() -> Result<(), iced_layershell::Error> {
         env::var("HOME").unwrap(),
     );
 
-    application(|| State::default(), namespace, update, view)
+    daemon(|| State::default(), namespace, update, view)
         .style(style)
         .subscription(subscription)
         .settings(Settings {
@@ -53,7 +53,7 @@ pub fn main() -> Result<(), iced_layershell::Error> {
                 ..Font::with_name("JetBrains Mono")
             },
             default_text_size: 13.into(),
-            ..Default::default()
+            ..Settings::default()
         })
         .font(icon_fonts)
         .theme(get_matugen_theme(matugen_conf))
@@ -286,7 +286,7 @@ fn bold(w: Weight) -> Font {
     }
 }
 
-fn view<'a>(s: &'a State) -> Element<'a, Message> {
+fn view<'a>(s: &'a State, wid: IcedId) -> Element<'a, Message> {
     let mut workspaces = Row::new().spacing(6);
     let end = if s.hyprland.workspaces.len() > 10 {
         s.hyprland.workspaces.len() as usize
@@ -502,7 +502,7 @@ struct Clock;
 impl TophubComponentInterface for Clock {
     type Input = State;
     fn size() -> (u32, u32) {
-        (120, 0)
+        (145, 0)
     }
     fn horizontal() -> bool {
         true
@@ -523,7 +523,7 @@ impl TophubComponentInterface for Clock {
         .style(|t: &Theme| text::Style {
             color: Some(t.palette().primary),
         });
-        let dtext_el = text(t.format("%A, %B %d").to_string()).size(10);
+        let dtext_el = text(t.format("%A, %b %d").to_string()).size(10);
 
         let clock = column![ctext_el, dtext_el]
             .spacing(1)
