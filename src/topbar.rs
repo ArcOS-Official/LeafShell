@@ -514,16 +514,22 @@ impl TophubComponentInterface for Clock {
         } else {
             t.format("%I:%M:%S %p").to_string()
         };
-        let ctext_el = text(ctext)
+        let mut ctext_el = text(ctext)
             .size(16)
             .font(Font {
                 weight: Weight::ExtraBold,
                 ..Font::with_name("JetBrains Mono")
             })
-        .style(|t: &Theme| text::Style {
-            color: Some(t.palette().primary),
-        });
-        let dtext_el = text(t.format("%A, %b %d").to_string()).size(10);
+            .style(|t: &Theme| text::Style {
+                color: Some(t.palette().primary),
+            })
+            .width(Length::Fill);
+        let mut dtext_el = text(t.format("%A, %b %d").to_string()).size(10).width(Length::Fill);
+
+        if s.player.status == MediaStatus::Stopped {
+            dtext_el = dtext_el.align_x(Alignment::Center);
+            ctext_el = ctext_el.align_x(Alignment::Center);
+        }
 
         let clock = column![ctext_el, dtext_el]
             .spacing(1)
